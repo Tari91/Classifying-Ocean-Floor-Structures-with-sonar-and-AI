@@ -1,0 +1,84 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.datasets import make_classification
+import seaborn as sns
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+
+# Set random seed for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# Synthetic Sonar Dataset Generation
+def generate_synthetic_sonar_data(n_samples=2000, n_features=10):
+    """
+    Simulate sonar readings with synthetic features to represent different ocean floor types.
+    """
+    X, y = make_classification(n_samples=n_samples,
+                               n_features=n_features,
+                               n_informative=6,
+                               n_redundant=2,
+                               n_classes=3,
+                               n_clusters_per_class=1,
+                               class_sep=1.5,
+                               random_state=42)
+    return X, y
+
+# Generate Data
+X, y = generate_synthetic_sonar_data()
+print(f"Data shape: {X.shape}, Labels shape: {y.shape}")
+
+# Split Dataset
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y)
+
+# Standardize Features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Build Neural Network Model
+model = Sequential([
+    Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
+    Dropout(0.3),
+    Dense(32, activation='relu'),
+    Dropout(0.2),
+    Dense(3, activation='softmax')  # 3 classes: e.g., Sand, Rock, Coral
+])
+
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+# Train Model
+history = model.fit(X_train_scaled, y_train, epochs=30, batch_size=32,
+                    validation_split=0.1, verbose=1)
+
+# Evaluate
+loss, acc = model.evaluate(X_test_scaled, y_test)
+print(f"Test Accuracy: {acc:.2f}")
+
+# Predictions and Confusion Matrix
+y_pred = np.argmax(model.predict(X_test_scaled), axis=1)
+print(classification_report(y_test, y_pred, target_names=['Sand', 'Rock', 'Coral']))
+
+# Confusion Matrix Plot
+cm = confusion_matrix(y_test, y_pred)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=['Sand', 'Rock', 'Coral'],
+            yticklabels=['Sand', 'Rock', 'Coral'])
+plt.xlabel("Predicted")
+plt.ylabel("True")
+plt.title("Ocean Floor Classification - Confusion Matrix")
+plt.show()
+
+# Plot training history
+plt.plot(history.history['accuracy'], label='train_acc')
+plt.plot(history.history['val_accuracy'], label='val_acc')
+plt.title('Model Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.grid(True)
+plt.show()
